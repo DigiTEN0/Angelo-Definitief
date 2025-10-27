@@ -238,7 +238,19 @@
   }
 
   .min-h-screen.py-20 {
+    padding-top: 3rem !important;
+  }
+
+  .flex.flex-col.min-h-screen .min-h-screen {
+    min-height: 70vh !important;
+  }
+
+  .min-h-screen.py-20 {
     padding-bottom: 0px !important;
+  }
+
+  section.py-24.bg-background {
+    padding-top: 4.5rem !important;
   }
 
   .min-h-screen.pt-20 {
