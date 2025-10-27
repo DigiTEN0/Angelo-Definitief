@@ -81,8 +81,7 @@ export default function Contact() {
                       <h3 className="font-semibold mb-1">Office Location</h3>
                       <p className="text-muted-foreground">
                         405 Rue de la Concorde<br />
-                        Suite 906<br />
-                        Montreal, Quebec
+                        Suite 906 - Montreal, Quebec
                       </p>
                     </div>
                   </div>
