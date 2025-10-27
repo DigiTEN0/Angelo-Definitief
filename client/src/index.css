@@ -241,6 +241,10 @@
     padding-bottom: 0px !important;
   }
 
+  .min-h-screen.pt-20 {
+    padding-top: 1rem !important;
+  }
+
   section.w-full {
     padding-top: 50px !important;
   }
