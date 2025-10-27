@@ -114,12 +114,6 @@ export default function Contact() {
                   <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-xs">✓</span>
                   </div>
-                  <span className="opacity-90">15+ years of Montreal real estate experience</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs">✓</span>
-                  </div>
                   <span className="opacity-90">Personalized, one-on-one service</span>
                 </li>
                 <li className="flex items-start gap-3">
