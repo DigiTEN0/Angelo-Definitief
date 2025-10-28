@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Property, InsertProperty } from "@shared/schema";
-import { Plus, Pencil, Trash2, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,8 +41,11 @@ export default function AdminProperties() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [features, setFeatures] = useState<string[]>([]);
   const [newFeature, setNewFeature] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: properties, isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -129,11 +132,13 @@ export default function AdminProperties() {
         images: property.images,
       });
       setImageUrls(property.images);
+      setImagePreviews(property.images);
       setFeatures(property.features);
     } else {
       setEditingProperty(null);
       form.reset();
       setImageUrls([]);
+      setImagePreviews([]);
       setFeatures([]);
     }
     setIsDialogOpen(true);
@@ -144,19 +149,55 @@ export default function AdminProperties() {
     setEditingProperty(null);
     form.reset();
     setImageUrls([]);
+    setImagePreviews([]);
     setFeatures([]);
     setNewFeature("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const addImageUrl = () => {
-    const url = prompt("Enter image URL:");
-    if (url) {
-      setImageUrls([...imageUrls, url]);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages(true);
+
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append("images", file);
+      });
+
+      const response = await fetch("/api/upload/property-images", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      
+      setImageUrls(prev => [...prev, ...data.imageUrls]);
+      setImagePreviews(prev => [...prev, ...data.imageUrls]);
+      
+      toast({ title: "Success", description: `${files.length} image(s) uploaded successfully` });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({ title: "Error", description: "Failed to upload images", variant: "destructive" });
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
   const removeImage = (index: number) => {
     setImageUrls(imageUrls.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
   const addFeature = () => {
@@ -393,22 +434,59 @@ export default function AdminProperties() {
                     />
                   </div>
 
-                  {/* Images */}
+                  {/* Images Upload */}
                   <div>
                     <Label>Images</Label>
-                    <div className="mt-2 space-y-2">
-                      {imageUrls.map((url, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Input value={url} readOnly className="flex-1" />
-                          <Button type="button" variant="destructive" size="sm" onClick={() => removeImage(index)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                    <div className="mt-2 space-y-4">
+                      {/* Image Previews */}
+                      {imagePreviews.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {imagePreviews.map((url, index) => (
+                            <div key={index} className="relative group">
+                              <img 
+                                src={url} 
+                                alt={`Preview ${index + 1}`} 
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeImage(index)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                      <Button type="button" variant="outline" onClick={addImageUrl} className="w-full">
-                        <ImagePlus className="w-4 h-4 mr-2" />
-                        Add Image URL
-                      </Button>
+                      )}
+
+                      {/* Upload Button */}
+                      <div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="image-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImages}
+                          className="w-full"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {uploadingImages ? "Uploading..." : "Upload Images"}
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Max 10 images, 10MB each. Supports JPG, PNG, WebP
+                        </p>
+                      </div>
                     </div>
                   </div>
 
