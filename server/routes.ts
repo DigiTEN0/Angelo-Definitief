@@ -3,8 +3,67 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertPropertySchema, insertLeadSchema, insertViewingSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import { nanoid } from "nanoid";
+import fs from "fs";
+
+// Setup multer for image uploads
+const uploadDir = path.join(process.cwd(), "uploads", "properties");
+
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const imageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `property_${nanoid()}${ext}`;
+    cb(null, filename);
+  },
+});
+
+const upload = multer({
+  storage: imageStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max per file
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed (jpeg, jpg, png, webp)"));
+    }
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded images
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+  // Image upload endpoint
+  app.post("/api/upload/property-images", upload.array("images", 10), async (req, res) => {
+    try {
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const imageUrls = req.files.map(file => `/uploads/properties/${file.filename}`);
+      res.json({ imageUrls });
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      res.status(500).json({ error: "Failed to upload images" });
+    }
+  });
+
   // Property Routes
   
   // GET /api/properties - Get all properties
